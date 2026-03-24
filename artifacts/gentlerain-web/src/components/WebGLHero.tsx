@@ -1,258 +1,231 @@
-import { useEffect, useRef, useState } from 'react';
-
-const vertexShader = `
-  varying vec2 vUv;
-  void main() {
-    vUv = uv;
-    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-  }
-`;
-
-const fragmentShader = `
-  uniform float uTime;
-  uniform vec2 uMouse;
-  uniform vec2 uResolution;
-  varying vec2 vUv;
-
-  float hash(vec2 p) {
-    return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
-  }
-
-  float noise(vec2 p) {
-    vec2 i = floor(p);
-    vec2 f = fract(p);
-    f = f * f * (3.0 - 2.0 * f);
-    float a = hash(i);
-    float b = hash(i + vec2(1.0, 0.0));
-    float c = hash(i + vec2(0.0, 1.0));
-    float d = hash(i + vec2(1.0, 1.0));
-    return mix(mix(a, b, f.x), mix(c, d, f.x), f.y);
-  }
-
-  float fbm(vec2 p) {
-    float val = 0.0;
-    float amp = 0.5;
-    float freq = 1.0;
-    for(int i = 0; i < 5; i++) {
-      val += amp * noise(p * freq);
-      amp *= 0.5;
-      freq *= 2.0;
-    }
-    return val;
-  }
-
-  void main() {
-    vec2 uv = vUv;
-    vec2 aspect = vec2(uResolution.x / uResolution.y, 1.0);
-
-    vec2 mouseInfluence = uMouse - 0.5;
-    float mouseDist = length((uv - 0.5) * aspect - mouseInfluence * aspect);
-    float mouseRipple = sin(mouseDist * 20.0 - uTime * 3.0) * exp(-mouseDist * 4.0) * 0.025;
-
-    vec2 distortedUv = uv;
-    distortedUv.x += fbm(uv * 2.5 + vec2(uTime * 0.08, uTime * 0.06)) * 0.04 + mouseRipple;
-    distortedUv.y += fbm(uv * 2.5 + vec2(uTime * 0.06, -uTime * 0.08)) * 0.04 + mouseRipple;
-
-    float n = fbm(distortedUv * 3.0 + uTime * 0.1);
-
-    vec3 col1 = vec3(0.04, 0.035, 0.02);
-    vec3 col2 = vec3(0.12, 0.10, 0.04);
-    vec3 col3 = vec3(0.25, 0.20, 0.05);
-
-    vec3 color = mix(col1, col2, n);
-    color = mix(color, col3, pow(n, 3.0) * 0.3);
-
-    float vignette = 1.0 - dot((uv - 0.5) * 1.6, (uv - 0.5) * 1.6);
-    color *= clamp(vignette, 0.0, 1.0);
-
-    gl_FragColor = vec4(color, 1.0);
-  }
-`;
-
-function CSSFallbackBackground() {
-  const bgRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const el = bgRef.current;
-    if (!el) return;
-    let mouseX = 50;
-    let mouseY = 50;
-
-    function onMove(e: MouseEvent) {
-      mouseX = (e.clientX / window.innerWidth) * 100;
-      mouseY = (e.clientY / window.innerHeight) * 100;
-      el.style.backgroundImage = `
-        radial-gradient(ellipse at ${mouseX}% ${mouseY}%, rgba(212,168,42,0.12) 0%, transparent 50%),
-        radial-gradient(ellipse at ${100 - mouseX}% ${100 - mouseY}%, rgba(212,168,42,0.04) 0%, transparent 50%),
-        linear-gradient(135deg, #0a0906 0%, #131109 50%, #0a0906 100%)
-      `;
-    }
-    window.addEventListener('mousemove', onMove);
-    return () => window.removeEventListener('mousemove', onMove);
-  }, []);
-
-  return (
-    <div
-      ref={bgRef}
-      style={{
-        position: 'absolute',
-        inset: 0,
-        background: 'linear-gradient(135deg, #0a0906 0%, #131109 50%, #0a0906 100%)',
-        transition: 'background-image 0.3s ease',
-      }}
-    >
-      {/* Animated grid lines */}
-      <svg
-        style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', opacity: 0.06 }}
-        xmlns="http://www.w3.org/2000/svg"
-      >
-        <defs>
-          <pattern id="grid" width="80" height="80" patternUnits="userSpaceOnUse">
-            <path d="M 80 0 L 0 0 0 80" fill="none" stroke="#d4a82a" strokeWidth="0.5" />
-          </pattern>
-        </defs>
-        <rect width="100%" height="100%" fill="url(#grid)" />
-      </svg>
-
-      {/* Glowing orbs */}
-      <div style={{
-        position: 'absolute',
-        top: '20%',
-        left: '20%',
-        width: '400px',
-        height: '400px',
-        borderRadius: '50%',
-        background: 'radial-gradient(circle, rgba(212,168,42,0.08) 0%, transparent 70%)',
-        animation: 'orbFloat 8s ease-in-out infinite',
-      }} />
-      <div style={{
-        position: 'absolute',
-        bottom: '20%',
-        right: '20%',
-        width: '300px',
-        height: '300px',
-        borderRadius: '50%',
-        background: 'radial-gradient(circle, rgba(212,168,42,0.05) 0%, transparent 70%)',
-        animation: 'orbFloat 10s ease-in-out infinite reverse',
-      }} />
-
-      <style>{`
-        @keyframes orbFloat {
-          0%, 100% { transform: translate(0, 0) scale(1); }
-          33% { transform: translate(30px, -20px) scale(1.05); }
-          66% { transform: translate(-20px, 15px) scale(0.97); }
-        }
-      `}</style>
-    </div>
-  );
-}
+import { useEffect, useRef } from 'react';
 
 export function WebGLHero() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [webglSupported, setWebglSupported] = useState(true);
 
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    let renderer: import('three').WebGLRenderer | null = null;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    let width = 0;
+    let height = 0;
+    let cols = 0;
+    let rows = 0;
+    let current: Float32Array;
+    let prev: Float32Array;
     let rafId: number;
+    let mouseX = -1;
+    let mouseY = -1;
+    let lastTime = 0;
 
-    async function init() {
-      try {
-        const THREE = await import('three');
+    const DAMPING = 0.985;
+    const CELL = 3; // pixels per simulation cell
 
-        renderer = new THREE.WebGLRenderer({ canvas: canvas!, antialias: false, alpha: false });
-        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
-        renderer.setSize(canvas!.clientWidth, canvas!.clientHeight);
+    function resize() {
+      width = canvas.clientWidth;
+      height = canvas.clientHeight;
+      canvas.width = width;
+      canvas.height = height;
+      cols = Math.ceil(width / CELL);
+      rows = Math.ceil(height / CELL);
+      current = new Float32Array(cols * rows);
+      prev = new Float32Array(cols * rows);
+    }
 
-        const scene = new THREE.Scene();
-        const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 10);
-        camera.position.z = 1;
+    function idx(x: number, y: number) {
+      return y * cols + x;
+    }
 
-        const geometry = new THREE.PlaneGeometry(2, 2);
-        const uniforms = {
-          uTime: { value: 0 },
-          uMouse: { value: new THREE.Vector2(0.5, 0.5) },
-          uResolution: { value: new THREE.Vector2(canvas!.clientWidth, canvas!.clientHeight) },
-        };
-
-        const material = new THREE.ShaderMaterial({
-          vertexShader,
-          fragmentShader,
-          uniforms,
-        });
-
-        const mesh = new THREE.Mesh(geometry, material);
-        scene.add(mesh);
-
-        let mouseX = 0.5;
-        let mouseY = 0.5;
-        let currentX = 0.5;
-        let currentY = 0.5;
-
-        function onMouseMove(e: MouseEvent) {
-          const rect = canvas!.getBoundingClientRect();
-          mouseX = (e.clientX - rect.left) / rect.width;
-          mouseY = 1 - (e.clientY - rect.top) / rect.height;
+    function drop(cx: number, cy: number, radius: number, strength: number) {
+      const gx = Math.floor(cx / CELL);
+      const gy = Math.floor(cy / CELL);
+      const r = Math.ceil(radius / CELL);
+      for (let dy = -r; dy <= r; dy++) {
+        for (let dx = -r; dx <= r; dx++) {
+          const nx = gx + dx;
+          const ny = gy + dy;
+          if (nx < 0 || nx >= cols || ny < 0 || ny >= rows) continue;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          if (dist <= r) {
+            const factor = (1 - dist / r);
+            current[idx(nx, ny)] -= strength * factor * factor;
+          }
         }
-
-        let lastTime = 0;
-        function animate(time: number) {
-          rafId = requestAnimationFrame(animate);
-          if (time - lastTime < 16) return;
-          lastTime = time;
-          currentX += (mouseX - currentX) * 0.04;
-          currentY += (mouseY - currentY) * 0.04;
-          uniforms.uTime.value = time * 0.001;
-          uniforms.uMouse.value.set(currentX, currentY);
-          renderer!.render(scene, camera);
-        }
-
-        function onResize() {
-          const w = canvas!.clientWidth;
-          const h = canvas!.clientHeight;
-          renderer!.setSize(w, h);
-          uniforms.uResolution.value.set(w, h);
-        }
-
-        window.addEventListener('mousemove', onMouseMove);
-        window.addEventListener('resize', onResize);
-        rafId = requestAnimationFrame(animate);
-
-        return () => {
-          window.removeEventListener('mousemove', onMouseMove);
-          window.removeEventListener('resize', onResize);
-          cancelAnimationFrame(rafId);
-          renderer?.dispose();
-          geometry.dispose();
-          material.dispose();
-        };
-      } catch (err) {
-        console.warn('WebGL not available, using CSS fallback:', err);
-        setWebglSupported(false);
-        return undefined;
       }
     }
 
-    let cleanup: (() => void) | undefined;
-    init().then(fn => { cleanup = fn; });
+    function step() {
+      for (let y = 1; y < rows - 1; y++) {
+        for (let x = 1; x < cols - 1; x++) {
+          const i = idx(x, y);
+          const val =
+            (prev[idx(x - 1, y)] +
+              prev[idx(x + 1, y)] +
+              prev[idx(x, y - 1)] +
+              prev[idx(x, y + 1)]) *
+            0.5 - current[i];
+          current[i] = val * DAMPING;
+        }
+      }
+      // swap
+      const tmp = prev;
+      prev = current;
+      current = tmp;
+    }
+
+    function render() {
+      // Create background gradient image
+      const imgData = ctx.createImageData(width, height);
+      const data = imgData.data;
+
+      // Base color: #0a0906 warm dark with subtle gold highlights
+      const baseR = 10, baseG = 9, baseB = 6;
+      const goldR = 212, goldG = 168, goldB = 42;
+
+      for (let y = 0; y < rows; y++) {
+        for (let x = 0; x < cols; x++) {
+          const h = prev[idx(x, y)];
+
+          // Sample neighboring heights to compute normal
+          const hL = x > 0 ? prev[idx(x - 1, y)] : h;
+          const hR = x < cols - 1 ? prev[idx(x + 1, y)] : h;
+          const hU = y > 0 ? prev[idx(x, y - 1)] : h;
+          const hD = y < rows - 1 ? prev[idx(x, y + 1)] : h;
+
+          const nx = hL - hR;
+          const ny = hU - hD;
+
+          // Compute refracted UV
+          const refractX = Math.round(nx * 2.5);
+          const refractY = Math.round(ny * 2.5);
+
+          // Distance from center for vignette
+          const cx = x / cols - 0.5;
+          const cy = y / rows - 0.5;
+          const dist = Math.sqrt(cx * cx + cy * cy);
+          const vignette = Math.max(0, 1 - dist * 2.0);
+
+          // Surface normal lighting
+          const lightX = 0.3, lightY = -0.5, lightZ = 0.8;
+          const nLen = Math.sqrt(nx * nx + ny * ny + 1);
+          const dot = Math.max(0, (nx * lightX + ny * lightY + lightZ) / nLen);
+          const specular = Math.pow(dot, 12) * 0.7;
+
+          // Subtle noise-like background variation based on position
+          const bgNoise = (Math.sin(x * 0.07 + y * 0.11) * 0.5 + 0.5) * 0.04;
+
+          // Ripple influence on color
+          const ripple = Math.abs(h) * 0.008;
+          const highlight = specular + ripple;
+
+          // Mix base + gold highlight
+          let r = baseR + (goldR - baseR) * highlight + bgNoise * 15;
+          let g = baseG + (goldG - baseG) * highlight + bgNoise * 12;
+          let b = baseB + (goldB - baseB) * highlight * 0.4 + bgNoise * 6;
+
+          r *= vignette;
+          g *= vignette;
+          b *= vignette;
+
+          // Write to pixel buffer (with refraction offset clamped)
+          const px = Math.max(0, Math.min(cols - 1, x + refractX));
+          const py = Math.max(0, Math.min(rows - 1, y + refractY));
+          const pi = (py * CELL * width + px * CELL) * 4;
+
+          // Fill CELL x CELL pixels
+          for (let dy = 0; dy < CELL; dy++) {
+            for (let dx = 0; dx < CELL; dx++) {
+              const pi2 = ((y * CELL + dy) * width + (x * CELL + dx)) * 4;
+              if (pi2 + 3 < data.length) {
+                data[pi2] = Math.min(255, r);
+                data[pi2 + 1] = Math.min(255, g);
+                data[pi2 + 2] = Math.min(255, b);
+                data[pi2 + 3] = 255;
+              }
+            }
+          }
+        }
+      }
+
+      ctx.putImageData(imgData, 0, 0);
+    }
+
+    function onMouseMove(e: MouseEvent) {
+      const rect = canvas.getBoundingClientRect();
+      mouseX = e.clientX - rect.left;
+      mouseY = e.clientY - rect.top;
+      drop(mouseX, mouseY, 20, 180);
+    }
+
+    function onTouchMove(e: TouchEvent) {
+      e.preventDefault();
+      const rect = canvas.getBoundingClientRect();
+      const touch = e.touches[0];
+      drop(touch.clientX - rect.left, touch.clientY - rect.top, 20, 180);
+    }
+
+    // Occasional random drops for ambient animation
+    function randomDrop() {
+      if (Math.random() < 0.04) {
+        const rx = Math.random() * width;
+        const ry = Math.random() * height;
+        drop(rx, ry, 8 + Math.random() * 12, 60 + Math.random() * 80);
+      }
+    }
+
+    function loop(time: number) {
+      rafId = requestAnimationFrame(loop);
+      const dt = time - lastTime;
+      if (dt < 14) return; // ~70fps cap
+      lastTime = time;
+
+      step();
+      randomDrop();
+      render();
+    }
+
+    function onResize() {
+      resize();
+    }
+
+    resize();
+
+    // Seed a couple of initial drops to get things moving
+    setTimeout(() => {
+      drop(width * 0.35, height * 0.45, 30, 200);
+      drop(width * 0.65, height * 0.55, 20, 150);
+    }, 100);
+    setTimeout(() => {
+      drop(width * 0.5, height * 0.3, 15, 120);
+    }, 600);
+
+    window.addEventListener('mousemove', onMouseMove);
+    canvas.addEventListener('touchmove', onTouchMove, { passive: false });
+    window.addEventListener('resize', onResize);
+    rafId = requestAnimationFrame(loop);
 
     return () => {
       cancelAnimationFrame(rafId);
-      cleanup?.();
+      window.removeEventListener('mousemove', onMouseMove);
+      canvas.removeEventListener('touchmove', onTouchMove);
+      window.removeEventListener('resize', onResize);
     };
   }, []);
-
-  if (!webglSupported) {
-    return <CSSFallbackBackground />;
-  }
 
   return (
     <canvas
       ref={canvasRef}
-      className="webgl-canvas"
-      style={{ display: 'block', width: '100%', height: '100%' }}
+      style={{
+        display: 'block',
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        width: '100%',
+        height: '100%',
+      }}
     />
   );
 }

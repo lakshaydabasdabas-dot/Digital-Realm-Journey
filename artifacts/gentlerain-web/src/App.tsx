@@ -8,6 +8,7 @@ import { FeaturesSection } from './components/FeaturesSection';
 import { MarqueeSection } from './components/MarqueeSection';
 import { CalloutSection } from './components/CalloutSection';
 import { Footer } from './components/Footer';
+import { CursorTrail } from './components/CursorTrail';
 
 function App() {
   useLenis();
@@ -23,6 +24,9 @@ function App() {
         <div className="cursor__dot" />
         <div className="cursor__ring" />
       </div>
+
+      {/* Comet tail trail */}
+      <CursorTrail />
 
       {/* Fixed nav */}
       <Nav />

@@ -35,12 +35,12 @@ void main(){
 
   // ambient slow warp
   dist += vec2(fbm(uv*2.+vec2(uTime*.07,uTime*.05)),
-               fbm(uv*2.+vec2(uTime*.05,-uTime*.07)))*0.045;
+               fbm(uv*2.+vec2(uTime*.05,-uTime*.07)))*0.12;
 
   // mouse shimmer
   vec2 md=(uv-uMouse)*asp;
   float ml=length(md);
-  dist += normalize(md+.0001)*sin(ml*30.-uTime*4.)*exp(-ml*5.)*0.015;
+  dist += normalize(md+.0001)*sin(ml*28.-uTime*5.)*exp(-ml*3.5)*0.055;
 
   // click ripples
   for(int i=0;i<8;i++){
@@ -48,8 +48,8 @@ void main(){
     if(age<=0.) continue;
     vec2 rd=(uv-uPos[i])*asp;
     float rl=length(rd);
-    float w=sin(rl*60.-age*7.)*exp(-age*2.)*exp(-rl*8.);
-    dist += normalize(rd+.0001)*w*0.022;
+    float w=sin(rl*50.-age*9.)*exp(-age*1.2)*exp(-rl*4.5);
+    dist += normalize(rd+.0001)*w*0.075;
   }
 
   vec2 dUv=uv+dist;
@@ -57,14 +57,14 @@ void main(){
   float n2=fbm(dUv*6.-uTime*.04);
 
   // specular from distortion gradient
-  float spec=pow(max(0.,dot(normalize(dist+.0001),vec2(.6,-.8))),8.)*.8;
+  float spec=pow(max(0.,dot(normalize(dist+.0001),vec2(.6,-.8))),5.)*2.2;
 
   vec3 dark=vec3(.04,.035,.022);
-  vec3 mid=vec3(.13,.10,.04);
-  vec3 gold=vec3(.85,.67,.17);
+  vec3 mid=vec3(.18,.13,.05);
+  vec3 gold=vec3(.95,.75,.20);
 
-  vec3 col=mix(dark,mid,n*.7+n2*.2);
-  col=mix(col,gold,spec+pow(n2,4.)*.3);
+  vec3 col=mix(dark,mid,n*.9+n2*.3);
+  col=mix(col,gold,spec+pow(n2,3.)*.55);
 
   float vig=1.-dot((uv-.5)*1.5,(uv-.5)*1.5);
   col*=clamp(vig,0.,1.);
@@ -130,7 +130,7 @@ function tryWebGL(canvas: HTMLCanvasElement): boolean {
     mNX = (e.clientX - r.left) / r.width;
     mNY = 1 - (e.clientY - r.top) / r.height;
     const dx = e.clientX - lastMX, dy = e.clientY - lastMY;
-    if (lastMX >= 0 && dx*dx+dy*dy > 900) spawn(mNX, mNY);
+    if (lastMX >= 0 && dx*dx+dy*dy > 300) spawn(mNX, mNY);
     lastMX = e.clientX; lastMY = e.clientY;
   }
   function onClick(e: MouseEvent) {
@@ -151,7 +151,7 @@ function tryWebGL(canvas: HTMLCanvasElement): boolean {
     cmNX += (mNX - cmNX) * .06;
     cmNY += (mNY - cmNY) * .06;
     for (const r of ripples) if (r.on) { r.age += .016; if (r.age > 3.5) r.on = false; }
-    if (t > nextAuto) { spawn(.2+Math.random()*.6, .2+Math.random()*.6); nextAuto = t+1.5+Math.random()*2; }
+    if (t > nextAuto) { spawn(.15+Math.random()*.7, .15+Math.random()*.7); nextAuto = t+0.6+Math.random()*1; }
 
     gl!.useProgram(prog);
     gl!.uniform1f(uTime, t);
@@ -182,7 +182,7 @@ function runCanvas2D(canvas: HTMLCanvasElement) {
   const CELL = 2;
   let w = 0, h = 0, cols = 0, rows = 0;
   let cur: Float32Array, prv: Float32Array;
-  const DAMP = 0.988;
+  const DAMP = 0.975;
 
   function resize() {
     w = canvas.clientWidth; h = canvas.clientHeight;
@@ -226,8 +226,8 @@ function runCanvas2D(canvas: HTMLCanvasElement) {
       const lx = 0.5, ly = -0.7, lz = 0.5;
       const nlen = Math.sqrt(nx2*nx2+ny2*ny2+1);
       const dot = Math.max(0,(nx2*lx+ny2*ly+lz)/nlen);
-      const spec = Math.pow(dot, 10) * 1.2;
-      const ripAmt = Math.abs(h2) * 0.006;
+      const spec = Math.pow(dot, 6) * 3.5;
+      const ripAmt = Math.abs(h2) * 0.018;
       const hi = spec + ripAmt;
 
       const cx2 = x/cols-0.5, cy2 = y/rows-0.5;
@@ -250,11 +250,11 @@ function runCanvas2D(canvas: HTMLCanvasElement) {
 
   function onMove(e: MouseEvent) {
     const r = canvas.getBoundingClientRect();
-    drop(e.clientX-r.left, e.clientY-r.top, 22, 220);
+    drop(e.clientX-r.left, e.clientY-r.top, 35, 420);
   }
   function onClick(e: MouseEvent) {
     const r = canvas.getBoundingClientRect();
-    drop(e.clientX-r.left, e.clientY-r.top, 40, 320);
+    drop(e.clientX-r.left, e.clientY-r.top, 65, 650);
   }
 
   let lastT = 0, raf: number;
@@ -262,13 +262,15 @@ function runCanvas2D(canvas: HTMLCanvasElement) {
     raf = requestAnimationFrame(loop);
     if (t - lastT < 14) return; lastT = t;
     step();
-    if (Math.random() < 0.025) drop(Math.random()*w, Math.random()*h, 10+Math.random()*14, 80+Math.random()*100);
+    if (Math.random() < 0.07) drop(Math.random()*w, Math.random()*h, 14+Math.random()*22, 200+Math.random()*280);
     render();
   }
 
   resize();
-  setTimeout(() => { drop(w*.35,h*.45,40,300); drop(w*.65,h*.55,28,220); }, 80);
-  setTimeout(() => drop(w*.5,h*.28,20,180), 700);
+  setTimeout(() => { drop(w*.35,h*.45,60,550); drop(w*.65,h*.55,45,420); }, 80);
+  setTimeout(() => drop(w*.5,h*.28,38,380), 600);
+  setTimeout(() => drop(w*.25,h*.7,30,300), 1100);
+  setTimeout(() => drop(w*.75,h*.35,35,340), 1500);
 
   window.addEventListener('resize', resize);
   window.addEventListener('mousemove', onMove);

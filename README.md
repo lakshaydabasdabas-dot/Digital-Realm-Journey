@@ -1,23 +1,20 @@
 # Digital-Realm-Journey
 
 ## Project Overview
-A digital exploration and documentation repository for the journey through the 'Digital Realm', featuring integrated tools and projects.
+A specialized exploration and documentation repository tracking my technical evolution through the 'Digital Realm'. It acts as a primary workspace for research, experimentation, and project logging.
 
 ## Tech Stack
 *   **Language**: TypeScript
-*   **Key Libraries**: N/A
-*   **Infrastructure**: Replit, Node.js
+*   **Platform**: Replit environment
+*   **Runtime**: Node.js
 
 ## Architecture & Design Choices
-- **Design Principles**: Modular, documented progression.
-- **Key Patterns**: Exploratory development, integrated documentation.
+- **Design Pattern**: Exploratory development with integrated technical documentation.
+- **Core Strategy**: A chronological record of technical milestones and iterative experiments.
 
 ## Setup Instructions
 ```bash
-# Clone the repository
 git clone https://github.com/lakshaydabasdabas-dot/Digital-Realm-Journey.git
-# Install dependencies
 npm install
-# Build/Run
 npm run start
 ```
